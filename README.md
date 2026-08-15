@@ -94,3 +94,10 @@ python -m PyInstaller --onefile --windowed main.py
 
 ```
 O arquivo final estará disponível dentro da pasta `dist/`.
+
+## 📄 Licença e Créditos
+
+Este projeto é open-source. Você é livre para usar, modificar e distribuir o código, desde que inclua os créditos originais linkando para este repositório:
+
+📦 **Projeto Original:** [WebCameras Caseiro](https://github.com/MarcieL-Bezerra/webcameras)  
+👤 **Autor:** [Marciel Bezerra](https://github.com/MarcieL-Bezerra)
