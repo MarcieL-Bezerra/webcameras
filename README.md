@@ -54,13 +54,17 @@ pip install -r requirements.txt
 ### 2. Configurar as Câmeras
 Crie o arquivo de configuração `.env` a partir do modelo de exemplo:
 
-```bash
-# No Windows:
-copy .env.example .env
-
-# No Linux/Mac:
-cp .env.example .env
 ```
+.env
+
+CAM1=rtsp://usuario:senha@ipdacamera:554/onvif2
+CAM2=rtsp://usuario:senha@ipdacamera:554/onvif2
+CAM3=rtsp://usuario:senha@ipdacamera:554/onvif2
+CAM4=rtsp://usuario:senha@ipdacamera:554/onvif2
+
+```
+* Observação geralmente as informações de usuarios e senhas bem como IP são localizadas no app das câmeras.
+
 
 Abra o arquivo `.env` gerado e insira as suas URLs RTSP nas variáveis `CAM1`, `CAM2`, `CAM3` e `CAM4`.
 
