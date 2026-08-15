@@ -44,7 +44,7 @@ def load_config():
 
 
 class CameraThread(threading.Thread):
-    def __init__(self, url):
+    def __init__(self, url, target_fps=5, max_width=640):
         super().__init__(daemon=True)
         self.url = url
         self.frame = None
@@ -53,7 +53,9 @@ class CameraThread(threading.Thread):
         self._cap = None
         self.last_success = time.monotonic()
         self.failed = False
-        
+        self.target_fps = target_fps
+        self.max_width = max_width
+
     def run(self):
         while self.running:
             try:
@@ -64,24 +66,34 @@ class CameraThread(threading.Thread):
                         except Exception:
                             pass
                     self._cap = cv2.VideoCapture(self.url)
+                    if self._cap:
+                        self._cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        self._cap.set(cv2.CAP_PROP_FPS, self.target_fps)
                     time.sleep(0.6)
-                    continue  
+                    continue
+
                 ret, frame = self._cap.read()
-                
-                if ret:
+                if ret and frame is not None:
+                    # keep frames smaller to reduce CPU pressure on low-power hardware
+                    h, w = frame.shape[:2]
+                    if w > self.max_width:
+                        scale = self.max_width / float(w)
+                        new_h = max(1, int(h * scale))
+                        frame = cv2.resize(frame, (self.max_width, new_h), interpolation=cv2.INTER_AREA)
                     with self.lock:
                         self.frame = frame
                     self.last_success = time.monotonic()
                     self.failed = False
-                    time.sleep(0.01) 
+                    time.sleep(1.0 / max(1, self.target_fps))
                 else:
                     self.failed = True
                     time.sleep(0.5)
 
             except Exception as e:
                 print(f"Erro na captura da câmera {self.url}: {e}")
+                self.failed = True
                 time.sleep(1.0)
-                
+
         if self._cap:
             self._cap.release()
 
@@ -147,6 +159,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Monitor de Câmeras de Segurança")
         self.cameras = []
         self.labels = []
+        self.economy_mode = True
 
         ensure_env()
         urls = load_config()
@@ -174,9 +187,13 @@ class MainWindow(QMainWindow):
         btn_edit.clicked.connect(self.edit_links)
         btn_stop = QPushButton("Parar")
         btn_stop.clicked.connect(self.stop_and_exit_fullscreen)
+        self.btn_mode = QPushButton("Modo economia")
+        self.btn_mode.clicked.connect(self.toggle_economy_mode)
+        self.refresh_mode_button_label()
         button_row = (max(1, len(urls)) + 1) // 2
         grid.addWidget(btn_edit, button_row, 0)
         grid.addWidget(btn_stop, button_row, 1)
+        grid.addWidget(self.btn_mode, button_row + 1, 0, 1, 2)
 
         self.setCentralWidget(central)
 
@@ -185,7 +202,7 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.update_frames)
         self.health_timer = QTimer(self)
         self.health_timer.timeout.connect(self.check_camera_health)
-        self.health_timer.start(15000)
+        self.health_timer.start(30000)
         self.reconnect_timer = QTimer(self)
         self.reconnect_timer.timeout.connect(self.reconnect_cameras)
         self.reconnect_timer.start(5 * 60 * 1000)
@@ -198,18 +215,20 @@ class MainWindow(QMainWindow):
     def start_cameras(self, urls):
         self.stop_cameras()
         self.cameras = []
+        fps = 3 if self.economy_mode else 5
+        max_width = 480 if self.economy_mode else 640
         for u in urls:
-            t = CameraThread(u)
+            t = CameraThread(u, target_fps=fps, max_width=max_width)
             t.start()
             self.cameras.append(t)
         # adjust update rate depending on number of cameras to avoid UI freeze
         n = len(self.cameras)
         if n <= 2:
-            interval = 100
+            interval = 350 if self.economy_mode else 250
         elif n == 3:
-            interval = 150
+            interval = 500 if self.economy_mode else 350
         else:
-            interval = 300
+            interval = 700 if self.economy_mode else 500
         # restart timer with chosen interval
         if not self.timer.isActive():
             self.timer.start(interval)
@@ -335,9 +354,24 @@ class MainWindow(QMainWindow):
         btn_edit.clicked.connect(self.edit_links)
         btn_stop = QPushButton("Parar")
         btn_stop.clicked.connect(self.stop_and_exit_fullscreen)
+        self.btn_mode = QPushButton("Modo economia")
+        self.btn_mode.clicked.connect(self.toggle_economy_mode)
+        self.refresh_mode_button_label()
         self.grid.addWidget(btn_edit, button_row, 0)
         self.grid.addWidget(btn_stop, button_row, 1)
+        self.grid.addWidget(self.btn_mode, button_row + 1, 0, 1, 2)
 
+        if urls:
+            self.start_cameras(urls)
+
+    def refresh_mode_button_label(self):
+        if hasattr(self, 'btn_mode'):
+            self.btn_mode.setText("Desativar economia" if self.economy_mode else "Modo economia")
+
+    def toggle_economy_mode(self):
+        self.economy_mode = not self.economy_mode
+        self.refresh_mode_button_label()
+        urls = load_config()
         if urls:
             self.start_cameras(urls)
 
