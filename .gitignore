@@ -1,0 +1,75 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+# (Caso você transforme seu app PySide6 em um executável .exe ou .app)
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.toml
+.cache
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.border
+*.cover
+*.py,cover
+
+# Environments & Virtual Environments
+# (Ignora pastas de ambiente virtual locais)
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# PySide6 / PyQt (Arquivos gerados por ferramentas de UI)
+# Se você usar o Qt Designer, ignore os arquivos temporários ou convertidos se preferir
+# *.ui  <- Remova o '#' se NÃO quiser salvar os arquivos originais do Qt Designer no Git
+rc_*.py
+
+# IDEs e Editores de Código
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs do sistema e da aplicação
+*.log
