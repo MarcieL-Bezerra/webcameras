@@ -53,7 +53,8 @@ class CameraThread(threading.Thread):
         self._cap = None
         self.last_success = time.monotonic()
         self.failed = False
-        
+        self.target_fps = 10
+
     def run(self):
         while self.running:
             try:
@@ -64,24 +65,28 @@ class CameraThread(threading.Thread):
                         except Exception:
                             pass
                     self._cap = cv2.VideoCapture(self.url)
+                    if self._cap:
+                        self._cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        self._cap.set(cv2.CAP_PROP_FPS, self.target_fps)
                     time.sleep(0.6)
-                    continue  
+                    continue
+
                 ret, frame = self._cap.read()
-                
-                if ret:
+                if ret and frame is not None:
                     with self.lock:
                         self.frame = frame
                     self.last_success = time.monotonic()
                     self.failed = False
-                    time.sleep(0.01) 
+                    time.sleep(1.0 / max(1, self.target_fps))
                 else:
                     self.failed = True
                     time.sleep(0.5)
 
             except Exception as e:
                 print(f"Erro na captura da câmera {self.url}: {e}")
+                self.failed = True
                 time.sleep(1.0)
-                
+
         if self._cap:
             self._cap.release()
 
@@ -185,7 +190,7 @@ class MainWindow(QMainWindow):
         self.timer.timeout.connect(self.update_frames)
         self.health_timer = QTimer(self)
         self.health_timer.timeout.connect(self.check_camera_health)
-        self.health_timer.start(15000)
+        self.health_timer.start(30000)
         self.reconnect_timer = QTimer(self)
         self.reconnect_timer.timeout.connect(self.reconnect_cameras)
         self.reconnect_timer.start(5 * 60 * 1000)
@@ -205,11 +210,11 @@ class MainWindow(QMainWindow):
         # adjust update rate depending on number of cameras to avoid UI freeze
         n = len(self.cameras)
         if n <= 2:
-            interval = 100
+            interval = 250
         elif n == 3:
-            interval = 150
+            interval = 350
         else:
-            interval = 300
+            interval = 500
         # restart timer with chosen interval
         if not self.timer.isActive():
             self.timer.start(interval)
