@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 import threading
 import time
 import cv2
@@ -9,7 +10,12 @@ from PySide6.QtWidgets import (
     QPushButton, QDialog, QFormLayout, QLineEdit, QVBoxLayout, QMessageBox
 )
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QPixmap, QIcon
+
+
+def resource_path(filename):
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, filename)
 
 
 def ensure_env():
@@ -157,6 +163,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Monitor de Câmeras de Segurança")
+        self.setWindowIcon(QIcon(resource_path("pycamview.ico")))
         self.cameras = []
         self.labels = []
         self.economy_mode = False
@@ -186,8 +193,8 @@ class MainWindow(QMainWindow):
 
         btn_edit = QPushButton("Editar links")
         btn_edit.clicked.connect(self.edit_links)
-        btn_stop = QPushButton("Parar")
-        btn_stop.clicked.connect(self.stop_and_exit_fullscreen)
+        btn_stop = QPushButton("Fechar")
+        btn_stop.clicked.connect(self.close_application)
         self.btn_mode = QPushButton("Ativar economia")
         self.btn_mode.clicked.connect(self.toggle_economy_mode)
         self.refresh_mode_button_label()
@@ -353,8 +360,8 @@ class MainWindow(QMainWindow):
 
         btn_edit = QPushButton("Editar links")
         btn_edit.clicked.connect(self.edit_links)
-        btn_stop = QPushButton("Parar")
-        btn_stop.clicked.connect(self.stop_and_exit_fullscreen)
+        btn_stop = QPushButton("Fechar")
+        btn_stop.clicked.connect(self.close_application)
         self.btn_mode = QPushButton("Ativar economia")
         self.btn_mode.clicked.connect(self.toggle_economy_mode)
         self.refresh_mode_button_label()
@@ -376,10 +383,12 @@ class MainWindow(QMainWindow):
         if urls:
             self.start_cameras(urls)
 
-    def stop_and_exit_fullscreen(self):
+    def close_application(self):
         self.stop_cameras()
-        if self.isFullScreen():
-            self.showNormal()
+        self.health_timer.stop()
+        self.reconnect_timer.stop()
+        self.close()
+        QApplication.instance().quit()
 
     def keyPressEvent(self, event):
         try:
