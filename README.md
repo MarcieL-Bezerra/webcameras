@@ -90,7 +90,7 @@ Caso queira compilar a aplicação em um arquivo único executável para Windows
 ```bash
 pip install PyInstaller
 
-python -m PyInstaller --onefile --windowed main.py
+python -m PyInstaller --onefile --windowed --icon=pycamview.ico --add-data "pycamview.ico;." main.py
 
 ```
 O arquivo final estará disponível dentro da pasta `dist/`.
