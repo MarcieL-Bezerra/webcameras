@@ -159,12 +159,13 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Monitor de Câmeras de Segurança")
         self.cameras = []
         self.labels = []
-        self.economy_mode = True
+        self.economy_mode = False
 
         ensure_env()
         urls = load_config()
 
         central = QWidget()
+        central.setStyleSheet("background-color: #121212; color: white;")
         grid = QGridLayout()
         central.setLayout(grid)
         self.grid = grid
@@ -187,7 +188,7 @@ class MainWindow(QMainWindow):
         btn_edit.clicked.connect(self.edit_links)
         btn_stop = QPushButton("Parar")
         btn_stop.clicked.connect(self.stop_and_exit_fullscreen)
-        self.btn_mode = QPushButton("Modo economia")
+        self.btn_mode = QPushButton("Ativar economia")
         self.btn_mode.clicked.connect(self.toggle_economy_mode)
         self.refresh_mode_button_label()
         button_row = (max(1, len(urls)) + 1) // 2
@@ -354,7 +355,7 @@ class MainWindow(QMainWindow):
         btn_edit.clicked.connect(self.edit_links)
         btn_stop = QPushButton("Parar")
         btn_stop.clicked.connect(self.stop_and_exit_fullscreen)
-        self.btn_mode = QPushButton("Modo economia")
+        self.btn_mode = QPushButton("Ativar economia")
         self.btn_mode.clicked.connect(self.toggle_economy_mode)
         self.refresh_mode_button_label()
         self.grid.addWidget(btn_edit, button_row, 0)
@@ -366,7 +367,7 @@ class MainWindow(QMainWindow):
 
     def refresh_mode_button_label(self):
         if hasattr(self, 'btn_mode'):
-            self.btn_mode.setText("Desativar economia" if self.economy_mode else "Modo economia")
+            self.btn_mode.setText("Desativar economia" if self.economy_mode else "Ativar economia") 
 
     def toggle_economy_mode(self):
         self.economy_mode = not self.economy_mode
