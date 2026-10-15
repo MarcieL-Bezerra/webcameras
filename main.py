@@ -9,8 +9,10 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QWidget, QGridLayout,
     QPushButton, QDialog, QFormLayout, QLineEdit, QVBoxLayout, QMessageBox
 )
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QTimer, Qt
 from PySide6.QtGui import QImage, QPixmap, QIcon
+
+from screen_recorder import ScreenRecorder, recordings_directory
 
 
 def resource_path(filename):
@@ -205,6 +207,16 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central)
 
+        self.recorder = None
+        try:
+            self.recorder = ScreenRecorder(recordings_directory())
+        except (OSError, RuntimeError, ValueError) as error:
+            QMessageBox.warning(self, "Gravação indisponível", str(error))
+        self.recording_timer = QTimer(self)
+        self.recording_timer.timeout.connect(self.record_screen)
+        if self.recorder:
+            self.recording_timer.start(1000)
+
         # start cameras
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frames)
@@ -305,6 +317,41 @@ class MainWindow(QMainWindow):
             label.setText("")
             label.setPixmap(pix)
 
+    def record_screen(self):
+        if not self.recorder:
+            return
+
+        error = self.recorder.pop_error()
+        if error:
+            self.recording_timer.stop()
+            self.recorder.stop()
+            self.recorder = None
+            QMessageBox.warning(self, "Erro na gravação", error)
+            return
+
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.recording_timer.stop()
+            self.recorder.stop()
+            self.recorder = None
+            QMessageBox.warning(self, "Erro na gravação", "Nenhuma tela disponível para captura.")
+            return
+
+        pixmap = screen.grabWindow(int(self.winId()))
+        if pixmap.isNull():
+            return
+
+        image_data = QByteArray()
+        image_buffer = QBuffer(image_data)
+        if not image_buffer.open(QIODevice.WriteOnly) or not pixmap.save(image_buffer, "PNG"):
+            self.recording_timer.stop()
+            self.recorder.stop()
+            self.recorder = None
+            QMessageBox.warning(self, "Erro na gravação", "Não foi possível capturar a tela do aplicativo.")
+            return
+        image_buffer.close()
+        self.recorder.add_png_frame(bytes(image_data))
+
     def edit_links(self):
         urls = load_config()
         dlg = EditDialog(urls, self)
@@ -401,6 +448,13 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.stop_cameras()
+        self.recording_timer.stop()
+        if self.recorder:
+            try:
+                self.recorder.stop()
+            except RuntimeError as error:
+                QMessageBox.warning(self, "Erro ao finalizar gravação", str(error))
+            self.recorder = None
         super().closeEvent(event)
 
 
