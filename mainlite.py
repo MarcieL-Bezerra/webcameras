@@ -1,11 +1,20 @@
 import os
+import platform
 import sys
 
 import cv2
 from dotenv import load_dotenv, set_key
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QImage, QIcon, QPixmap
-from PySide6.QtWidgets import (
+
+# --- DETECÇÃO DO RASPBERRY PI ---
+# Verifica se é Linux e se a arquitetura é ARM (comum em sistemas 32 e 64 bits do Pi)
+if platform.system() == "Linux" and "arm" in platform.machine().lower():
+    # Define a tela do Raspberry antes de iniciar a interface gráfica
+    os.environ["DISPLAY"] = ":0"
+
+# --- IMPORTS DO PYQT5 ---
+from PyQt5.QtCore import QBuffer, QByteArray, QIODevice, Qt, QTimer
+from PyQt5.QtGui import QImage, QIcon, QPixmap
+from PyQt5.QtWidgets import (
     QApplication,
     QDialog,
     QFormLayout,
@@ -19,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from main import CameraThread, ensure_env, resource_path
+from screen_recorder import ScreenRecorder, recordings_directory
 
 
 def load_first_camera():
@@ -55,6 +65,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(resource_path("pycamview.ico")))
         self.camera = None
         self.economy_mode = False
+        ensure_env()
 
         self.video_label = QLabel()
         self.video_label.setAlignment(Qt.AlignCenter)
@@ -82,6 +93,16 @@ class MainWindow(QMainWindow):
         central.setStyleSheet("background-color: #121212; color: white;")
         central.setLayout(layout)
         self.setCentralWidget(central)
+
+        self.recorder = None
+        try:
+            self.recorder = ScreenRecorder(recordings_directory())
+        except (OSError, RuntimeError, ValueError) as error:
+            QMessageBox.warning(self, "Gravação indisponível", str(error))
+        self.recording_timer = QTimer(self)
+        self.recording_timer.timeout.connect(self.record_screen)
+        if self.recorder:
+            self.recording_timer.start(1000)
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)
@@ -143,6 +164,41 @@ class MainWindow(QMainWindow):
         self.video_label.setText("")
         self.video_label.setPixmap(pixmap)
 
+    def record_screen(self):
+        if not self.recorder:
+            return
+
+        error = self.recorder.pop_error()
+        if error:
+            self.recording_timer.stop()
+            self.recorder.stop()
+            self.recorder = None
+            QMessageBox.warning(self, "Erro na gravação", error)
+            return
+
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            self.recording_timer.stop()
+            self.recorder.stop()
+            self.recorder = None
+            QMessageBox.warning(self, "Erro na gravação", "Nenhuma tela disponível para captura.")
+            return
+
+        pixmap = screen.grabWindow(int(self.winId()))
+        if pixmap.isNull():
+            return
+
+        image_data = QByteArray()
+        image_buffer = QBuffer(image_data)
+        if not image_buffer.open(QIODevice.WriteOnly) or not pixmap.save(image_buffer, "PNG"):
+            self.recording_timer.stop()
+            self.recorder.stop()
+            self.recorder = None
+            QMessageBox.warning(self, "Erro na gravação", "Não foi possível capturar a tela do aplicativo.")
+            return
+        image_buffer.close()
+        self.recorder.add_png_frame(bytes(image_data))
+
     def check_camera_health(self):
         if self.camera and self.camera.needs_reconnect(30):
             self.start_camera(load_first_camera())
@@ -158,7 +214,7 @@ class MainWindow(QMainWindow):
 
     def edit_link(self):
         dialog = EditCameraDialog(load_first_camera(), self)
-        if not dialog.exec():
+        if not dialog.exec_():
             return
 
         try:
@@ -198,6 +254,13 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.stop_camera()
+        self.recording_timer.stop()
+        if self.recorder:
+            try:
+                self.recorder.stop()
+            except RuntimeError as error:
+                QMessageBox.warning(self, "Erro ao finalizar gravação", str(error))
+            self.recorder = None
         super().closeEvent(event)
 
 
@@ -205,7 +268,7 @@ def main():
     app = QApplication([])
     window = MainWindow()
     window.showMaximized()
-    app.exec()
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
