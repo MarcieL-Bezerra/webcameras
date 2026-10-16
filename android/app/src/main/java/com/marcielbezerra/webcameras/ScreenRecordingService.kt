@@ -144,16 +144,30 @@ class ScreenRecordingService : Service() {
 
     private fun startNextSegment() {
         val (width, height, _) = screenDimensions()
-        val nextPartialFile = newPartialFile()
-        val nextRecorder = createRecorder(nextPartialFile, width, height)
+        val display = virtualDisplay
+            ?: throw IOException("A captura da tela não está mais ativa.")
         val previousRecorder = recorder
         val previousPartialFile = currentPartialFile
+        if (previousRecorder == null) {
+            throw IOException("O gravador atual não está mais ativo.")
+        }
+
+        display.setSurface(null)
+        recorder = null
+        currentPartialFile = null
+        finalizeRecorder(previousRecorder, previousPartialFile)
+
+        val nextPartialFile = newPartialFile()
+        val nextRecorder = createRecorder(nextPartialFile, width, height)
         try {
-            val display = virtualDisplay
-                ?: throw IOException("A captura da tela não está mais ativa.")
             display.setSurface(nextRecorder.surface)
             nextRecorder.start()
         } catch (error: Exception) {
+            try {
+                display.setSurface(null)
+            } catch (detachError: Exception) {
+                Log.e(TAG, "Não foi possível desconectar o novo gravador.", detachError)
+            }
             nextRecorder.release()
             nextPartialFile.delete()
             throw error
@@ -161,12 +175,6 @@ class ScreenRecordingService : Service() {
 
         recorder = nextRecorder
         currentPartialFile = nextPartialFile
-        try {
-            finalizeRecorder(previousRecorder, previousPartialFile)
-        } catch (error: Exception) {
-            Log.e(TAG, "Não foi possível finalizar um segmento anterior.", error)
-            sendState(active = true, error = "Erro ao finalizar uma gravação anterior: ${error.localizedMessage}")
-        }
     }
 
     private fun createRecorder(outputFile: File, width: Int, height: Int): MediaRecorder {
