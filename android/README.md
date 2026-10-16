@@ -29,10 +29,12 @@ O limite padrão de armazenamento é 5 GB. Para compilar com outro limite inteir
 
 ## Uso
 
-1. Instale e abra o APK.
+1. Instale e abra o APK. O app precisa de acesso à internet para receber as câmeras.
 2. Toque em **Editar** e informe até quatro URLs `rtsp://`.
-3. Toque em **Iniciar gravação** e autorize a captura de tela na solicitação do Android. A gravação continua em segundo plano por meio de um serviço em primeiro plano; use o botão do app ou a notificação persistente para pará-la.
+3. Toque em **Iniciar gravação**. No Android 13 ou superior, permita notificações para acompanhar e parar a gravação pela notificação. Em seguida, autorize a captura de tela na solicitação do sistema Android. Se as notificações forem negadas, a gravação ainda pode ser iniciada e parada pelo botão do app.
 4. Os MP4 ficam em `Android/data/com.marcielbezerra.webcameras/files/Movies/gravacoes`. Segmentos são finalizados a cada cinco minutos e os mais antigos são removidos quando o total passa do limite configurado.
+
+As gravações ficam no armazenamento privado do app, então não é necessária permissão de armazenamento. O Android solicita a autorização de captura de tela quando a gravação começa; o app não solicita acesso à câmera nem ao microfone.
 
 Por padrão, o app tenta o substream RTSP `/h264/ch1/sub/av_stream`, que oferece imagem menor para reduzir a carga de decodificação e rede nas quatro câmeras. Use o botão **Substream/Principal** para alternar entre essa imagem e o endereço RTSP informado. A codificação do substream depende da configuração de cada câmera; se o aparelho não decodificar HEVC/H.265, configure H.264 nas opções de vídeo da câmera. As URLs configuradas ficam no armazenamento privado do app; o arquivo `.env` do desktop não é incluído no APK.
 

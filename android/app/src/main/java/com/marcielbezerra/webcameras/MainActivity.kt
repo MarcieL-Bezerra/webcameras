@@ -1,10 +1,12 @@
 package com.marcielbezerra.webcameras
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
@@ -71,6 +73,18 @@ class MainActivity : ComponentActivity() {
                     Toast.LENGTH_LONG,
                 ).show()
             }
+        }
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (!granted) {
+                Toast.makeText(
+                    this,
+                    "Sem notificações, use o botão do app para parar a gravação.",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+            requestScreenCapture()
         }
 
     private val recordingStateReceiver = object : BroadcastReceiver() {
@@ -448,6 +462,18 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            requestScreenCapture()
+        }
+    }
+
+    private fun requestScreenCapture() {
         val manager = getSystemService(MediaProjectionManager::class.java)
         projectionLauncher.launch(manager.createScreenCaptureIntent())
     }
