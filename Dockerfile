@@ -8,12 +8,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirementsdocker.txt .
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
 
-# Instala a versão 'headless' do OpenCV para economizar espaço e evitar bugs de GUI
+COPY requirementsdocker.txt ./
 RUN pip install --no-cache-dir -r requirementsdocker.txt
 
-COPY . .
+COPY app.py screen_recorder.py ./
+RUN mkdir -p /app/gravacoes
+
+VOLUME ["/app/gravacoes"]
 
 EXPOSE 8000
 
