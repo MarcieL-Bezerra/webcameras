@@ -1,15 +1,40 @@
 # WebCameras
 
-Aplicativo para monitorar câmeras IP por RTSP no computador ou em um celular Android. A versão desktop oferece dois modos: `main.py` exibe várias câmeras em uma grade e `mainlite.py` exibe uma câmera.
+Aplicativo para monitorar câmeras IP por RTSP no computador, em uma página web ou em um celular Android. `app.py` oferece a interface web para execução em Docker; `main.py` e `mainlite.py` são as versões desktop.
 
 ## Funcionalidades
 
 - Visualização de até quatro streams RTSP na versão desktop principal.
 - Versão Lite para visualizar uma câmera.
 - Configuração dos endereços pelo aplicativo ou pelo arquivo `.env` no desktop.
-- Gravação da imagem da janela em vídeos MP4/H.264 divididos em segmentos de cinco minutos.
+- Interface web com edição de câmeras e modo de economia de recursos.
+- Gravação da grade de câmeras em vídeos MP4/H.264 divididos em segmentos de cinco minutos.
 - Remoção das gravações MP4 mais antigas quando o armazenamento ultrapassa o limite configurado, de 5 GB por padrão.
 - Aplicativo Android nativo com quatro câmeras, alternância entre substream e stream principal e gravação da tela.
+
+## Versão web com Docker
+
+Configure as URLs RTSP em um arquivo `.env` na raiz do projeto:
+
+```dotenv
+CAM1=rtsp://usuario:senha@192.168.1.10:554/onvif2
+CAM2=rtsp://usuario:senha@192.168.1.11:554/onvif2
+```
+
+No PowerShell, crie o arquivo caso ainda não exista, construa a imagem e inicie o container:
+
+```powershell
+if (-not (Test-Path .env)) { New-Item .env -ItemType File }
+docker build -t webcameras .
+docker run --rm --name webcameras -p 8000:8000 `
+  -v "${PWD}\.env:/app/.env" `
+  -v "${PWD}\gravacoes:/app/gravacoes" `
+  webcameras
+```
+
+Acesse `http://localhost:8000`. A página permite editar as URLs (salvas no `.env` montado) e alternar o modo de economia. O servidor grava continuamente a composição das câmeras em `gravacoes`, em segmentos MP4/H.264 de cinco minutos; a pasta montada mantém os arquivos após remover o container. O limite padrão de armazenamento é 5 GB e pode ser alterado com `-e RECORDINGS_MAX_GB=2` no comando `docker run`.
+
+O container não possui autenticação: use-o somente em uma rede confiável e não exponha a porta diretamente à internet. O arquivo `.dockerignore` exclui `.env` e gravações da imagem.
 
 ## Versão desktop
 
