@@ -2,13 +2,11 @@ name: Build Docker Image
 
 on:
   push:
-    branches: [ "master" ] # Monitora a branch principal
+    branches: [ "main" ] # Monitora a branch principal
 
 jobs:
   build:
-    # Esta condição garante que o workflow só rode se o push veio de um merge de Pull Request
-    if: github.event.commits[0] != null && (contains(github.event.head_commit.message, 'Merge pull request') || contains(github.event.head_commit.message, 'Merge branch'))
-    
+    if: github.event.commits != null && (contains(github.event.head_commit.message, 'Merge pull request') || contains(github.event.head_commit.message, 'Merge branch'))
     runs-on: ubuntu-latest
     steps:
       - name: Baixar o código
@@ -21,9 +19,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # PASSO NOVO: Converte o nome do usuário/repositório para minúsculo de forma segura
+      - name: Set up lower case owner name
+        id: string
+        run: |
+          echo "owner_lowercase=${OWNER,,}" >> ${GITHUB_OUTPUT}
+        env:
+          OWNER: ${{ github.actor }}
+
       - name: Buildar e enviar a imagem
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.actor }}/webcameras:latest
+          # Usamos a saída do passo anterior (steps.string.outputs.owner_lowercase)
+          tags: ghcr.io/${{ steps.string.outputs.owner_lowercase }}/webcameras:latest
