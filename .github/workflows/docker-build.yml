@@ -2,7 +2,7 @@ name: Build Docker Image
 
 on:
   push:
-    branches: [ "main" ] # Monitora a branch principal
+    branches: [ "master" ] # Monitora a branch principal
 
 jobs:
   build:
